@@ -32,6 +32,8 @@ export const AcmeLogo = () => {
 
 export const navLinks = [
     {label: "Home", href: "/"},
+    {label: "Admin", href: "/admin"},
+    {label: "Dashboard", href: "/dashboard"},
     {label: "About", href: "/about"},
     {label: "Contact", href: "/contact"},
     {label: "Privacy", href: "/privacy"},
