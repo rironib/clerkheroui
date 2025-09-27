@@ -1,0 +1,82 @@
+import {NextResponse} from "next/server";
+import {clerkMiddleware, createRouteMatcher} from "@clerk/nextjs/server";
+import {generateVisitorId} from "@/lib/generateVisitorId";
+import {axiosPublic} from "@/lib/useAxiosPublic";
+
+const isAdminRoute = createRouteMatcher(["/admin(.*)"]);
+const isProtectedRoute = createRouteMatcher(["/dashboard(.*)", "/forum(.*)"]);
+
+export default clerkMiddleware(async (auth, req) => {
+    const res = NextResponse.next();
+
+    if (req.headers.get("x-internal-analytics") === "true") {
+        return NextResponse.next();
+    }
+
+    // -----------------------------
+    // 🔹 1. Clerk Authentication
+    // -----------------------------
+
+    if (isAdminRoute(req)) {
+        const {sessionClaims} = await auth();
+        if (!sessionClaims?.metadata?.isAdmin) {
+            const url = new URL("/dashboard", req.url);
+            return NextResponse.redirect(url);
+        }
+    }
+
+    if (isProtectedRoute(req)) await auth.protect();
+
+    // -----------------------------
+    // 🔹 2. Analytics Visitor Tracking
+    // -----------------------------
+    const cookieName = "visitorId";
+    const visitorId = req.cookies.get(cookieName)?.value;
+
+
+    if (!visitorId) {
+        const newVisitorId = generateVisitorId();
+
+        // Calculate seconds until today 23:59:59 for cookie expiry
+        const now = new Date();
+        const endOfDay = new Date();
+        endOfDay.setHours(23, 59, 59, 999);
+        const maxAgeSeconds = Math.floor((endOfDay.getTime() - now.getTime()) / 1000);
+
+        // Set visitorId cookie
+        res.cookies.set(cookieName, newVisitorId, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            maxAge: maxAgeSeconds,
+            path: "/",
+        });
+
+        // Clean OS value
+        const rawOs = req.headers.get("sec-ch-ua-platform") || "";
+        const os = rawOs.replace(/"/g, "") || "Unknown";
+
+        await axiosPublic.post("/api/analytics", {
+            visitorId: newVisitorId,
+            ip: req.headers.get("x-forwarded-for")?.split(",")[0] || "unknown",
+            userAgent: req.headers.get("user-agent") || "",
+            os,
+            referrer: req.headers.get("referer") || "",
+        }, {
+            headers: {
+                "x-internal-analytics": "true",
+            },
+            timeout: 2000,
+        })
+    }
+    return res;
+});
+
+export const config = {
+    matcher: [
+        // Skip Next.js internals and all static files, unless found in search params
+        '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+        // Always run for API routes
+        '/(api|trpc)(.*)',
+    ],
+}
