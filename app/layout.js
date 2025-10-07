@@ -1,11 +1,11 @@
 import "./globals.css";
+import {siteConfig} from "@/config/site";
+import {Providers} from "@/app/providers";
 import {ClerkProvider} from "@clerk/nextjs";
 import Header from "@/components/ui/Header";
 import Footer from "@/components/ui/Footer";
 import {hind_siliguri} from "@/config/fonts";
-import {siteConfig} from "@/config/site";
 import Analytics from "@/components/Analytics";
-import {Providers} from "@/app/providers";
 
 export const metadata = async () => {
     return {

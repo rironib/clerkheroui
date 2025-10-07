@@ -52,15 +52,10 @@ export default clerkMiddleware(async (auth, req) => {
             path: "/",
         });
 
-        // Clean OS value
-        const rawOs = req.headers.get("sec-ch-ua-platform") || "";
-        const os = rawOs.replace(/"/g, "") || "Unknown";
-
         await axiosPublic.post("/api/analytics", {
             visitorId: newVisitorId,
             ip: req.headers.get("x-forwarded-for")?.split(",")[0] || "unknown",
             userAgent: req.headers.get("user-agent") || "",
-            os,
             referrer: req.headers.get("referer") || "",
         }, {
             headers: {
@@ -77,6 +72,5 @@ export const config = {
         // Skip Next.js internals and all static files, unless found in search params
         '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
         // Always run for API routes
-        '/(api|trpc)(.*)',
-    ],
+        '/(api|trpc)(.*)',],
 }

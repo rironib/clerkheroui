@@ -3,18 +3,44 @@
 import Visitor from "@/models/Visitor";
 import connectDB from "@/lib/db";
 import {NextResponse} from "next/server";
+import useragent from "useragent";
 
 export async function POST(req) {
-    const body = await req.json();
-    await connectDB();
+    try {
+        const body = await req.json();
+        const {visitorId, userAgent} = body;
+        const parsed = useragent.parse(userAgent);
+        const os = parsed.os.family;
 
-    const exists = await Visitor.findOne({visitorId: body.visitorId});
-    if (exists) return Response.json({message: "Already exists"});
+        // ❌ Skip if OS is missing or empty string
+        if (!os || os.trim() === "") {
+            return NextResponse.json(
+                {success: false, message: "Missing or empty OS field"},
+                {status: 400}
+            );
+        }
 
-    const visitor = new Visitor(body);
-    await visitor.save();
+        await connectDB();
 
-    return Response.json({success: true});
+        const exists = await Visitor.findOne({visitorId});
+        if (exists) {
+            return Response.json({message: "Already exists"});
+        }
+
+        body.browser = parsed.family;
+        const visitor = new Visitor(body);
+        await visitor.save();
+
+        return Response.json({success: true});
+    } catch (error) {
+        {
+            console.error("POST /api/analytics error:", error);
+            return NextResponse.json(
+                {success: false, error: error.message},
+                {status: 500}
+            );
+        }
+    }
 }
 
 export async function GET() {
