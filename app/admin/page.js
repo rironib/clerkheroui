@@ -44,7 +44,7 @@ export default async function Page() {
     let analytics = null;
     let error = null;
     try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/analytics`, {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/admin/analytics`, {
             method: "GET",
             headers: {
                 "Content-Type": "application/json",

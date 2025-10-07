@@ -8,7 +8,7 @@ const VisitorSchema = new mongoose.Schema({
     browser: String,
     device: String,
     userAgent: String,
-    referrer: String,
+    source: String,
     firstVisit: {type: Date, default: Date.now},
 }, {versionKey: false});
 

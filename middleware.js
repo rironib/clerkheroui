@@ -3,7 +3,7 @@ import {clerkMiddleware, createRouteMatcher} from "@clerk/nextjs/server";
 import {generateVisitorId} from "@/lib/generateVisitorId";
 import {axiosPublic} from "@/lib/useAxiosPublic";
 
-const isAdminRoute = createRouteMatcher(["/admin(.*)"]);
+const isAdminRoute = createRouteMatcher(["/admin(.*)", "/api/admin(.*)"]);
 const isProtectedRoute = createRouteMatcher(["/dashboard(.*)", "/forum(.*)"]);
 
 export default clerkMiddleware(async (auth, req) => {
@@ -30,9 +30,18 @@ export default clerkMiddleware(async (auth, req) => {
     // -----------------------------
     // 🔹 2. Analytics Visitor Tracking
     // -----------------------------
+    const pathname = req.nextUrl.pathname;
+
+    // Skip static files, _next assets, and favicon
+    if (
+        pathname.startsWith("/_next/") ||
+        pathname.startsWith("/static/") ||
+        pathname === "/favicon.ico"
+    ) {
+        return res;
+    }
     const cookieName = "visitorId";
     const visitorId = req.cookies.get(cookieName)?.value;
-
 
     if (!visitorId) {
         const newVisitorId = generateVisitorId();
@@ -52,9 +61,10 @@ export default clerkMiddleware(async (auth, req) => {
             path: "/",
         });
 
-        await axiosPublic.post("/api/analytics", {
+        axiosPublic.post("/api/analytics", {
             visitorId: newVisitorId,
-            ip: req.headers.get("x-forwarded-for")?.split(",")[0] || "unknown",
+            ip: req.headers.get("x-forwarded-for")?.split(",")[0] || "",
+            os: req.headers.get("sec-ch-ua-platform")?.replace(/"/g, "") || "",
             userAgent: req.headers.get("user-agent") || "",
             referrer: req.headers.get("referer") || "",
         }, {
@@ -69,8 +79,7 @@ export default clerkMiddleware(async (auth, req) => {
 
 export const config = {
     matcher: [
-        // Skip Next.js internals and all static files, unless found in search params
-        '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
-        // Always run for API routes
-        '/(api|trpc)(.*)',],
-}
+        "/((?!_next|static|favicon\\.ico).*)",
+        "/api/:path*",
+    ],
+};
